@@ -34,6 +34,17 @@ fn main() -> rltk::BError {
             bg: RGB::named(rltk::BLACK),
         })
         .build();
+    for i in 1..10 {
+        gs.ecs
+            .create_entity()
+            .with(Position { x: i * 7, y: 20 })
+            .with(Renderable {
+                glyph: rltk::to_cp437('$'),
+                fg: RGB::named(rltk::RED),
+                bg: RGB::named(rltk::BLACK),
+            })
+            .build();
+    }
     rltk::main_loop(context, gs)
 }
 #[derive(Component)]
