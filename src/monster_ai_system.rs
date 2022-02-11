@@ -5,19 +5,34 @@ use specs::prelude::*;
 pub struct MonsterAI {}
 
 impl<'a> System<'a> for MonsterAI {
+    #[allow(clippy::type_complexity)]
     type SystemData = (
-        ReadStorage<'a, ViewShed>,
+        WriteExpect<'a, Map>,
+        WriteStorage<'a, ViewShed>,
         ReadExpect<'a, Point>,
         ReadStorage<'a, Monster>,
         ReadStorage<'a, Name>,
+        WriteStorage<'a, Position>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (viewshed, player_pos, monster, name) = data;
+        let (mut map, mut viewshed, player_pos, monster, name, mut position) = data;
 
-        for (viewshed, _monster, name) in (&viewshed, &monster, &name).join() {
+        for (mut viewshed, _monster, name, pos) in
+            (&mut viewshed, &monster, &name, &mut position).join()
+        {
             if viewshed.visible_tiles.contains(&*player_pos) {
                 console::log(format!("{} shouts insult", name.name));
+                let path = rltk::a_star_search(
+                    map.xy_idx(pos.x, pos.y) as i32,
+                    map.xy_idx(player_pos.x, player_pos.y) as i32,
+                    &mut *map,
+                );
+                if path.success && path.steps.len() > 1 {
+                    pos.x = path.steps[1] as i32 % map.width;
+                    pos.y = path.steps[1] as i32 / map.width;
+                    viewshed.dirty = true;
+                }
             }
         }
     }
