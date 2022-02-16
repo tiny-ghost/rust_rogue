@@ -1,5 +1,6 @@
 mod components;
 mod map;
+mod map_indexing_system;
 mod monster_ai_system;
 mod player;
 mod rect;
@@ -7,6 +8,7 @@ mod visibility_system;
 
 pub use components::*;
 pub use map::*;
+use map_indexing_system::MapIndexSystem;
 use monster_ai_system::*;
 pub use player::*;
 pub use rect::Rect;
@@ -27,20 +29,18 @@ fn main() -> rltk::BError {
     };
 
     gs.ecs.register::<Position>();
-
     gs.ecs.register::<Player>();
     gs.ecs.register::<Name>();
-
     gs.ecs.register::<Monster>();
-
     gs.ecs.register::<Renderable>();
-
     gs.ecs.register::<ViewShed>();
+    gs.ecs.register::<BlocksTile>();
 
     let map = new_map_rooms_and_corridors();
     let (p_x, p_y) = map.rooms[0].center();
-    gs.ecs.insert(Point::new(p_x, p_y));
+
     let mut rng = rltk::RandomNumberGenerator::new();
+
     for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
         let glyph: rltk::FontCharType;
@@ -74,12 +74,12 @@ fn main() -> rltk::BError {
             .with(Name {
                 name: format!("{} #{}", &name, i),
             })
+            .with(BlocksTile {})
             .build();
     }
 
-    gs.ecs.insert(map);
-
-    gs.ecs
+    let player_entity = gs
+        .ecs
         .create_entity()
         .with(Position { x: p_x, y: p_y })
         .with(Player {})
@@ -98,6 +98,11 @@ fn main() -> rltk::BError {
         })
         .build();
 
+    gs.ecs.insert(Point::new(p_x, p_y));
+
+    gs.ecs.insert(player_entity);
+    gs.ecs.insert(map);
+
     rltk::main_loop(context, gs)
 }
 #[derive(PartialEq, Copy, Clone)]
@@ -115,8 +120,10 @@ impl State {
     fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
         let mut mob = MonsterAI {};
+        let mut mapindex = MapIndexSystem {};
         mob.run_now(&self.ecs);
         vis.run_now(&self.ecs);
+        mapindex.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
